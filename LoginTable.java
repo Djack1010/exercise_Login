@@ -46,7 +46,7 @@ public class LoginTable {
 	
 	public void login(String username, String password) throws SQLException {
 		stmtLeggiTutto.setString(1, username);
-		ResultSet rs = stmtOttieniPassword.executeQuery();
+		ResultSet rs = stmtLeggiTutto.executeQuery();
 
 		if (!rs.next()) {
 
