@@ -3,8 +3,6 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-
 
 public class LoginTable {
 	private Connection conn = null;
@@ -12,10 +10,10 @@ public class LoginTable {
 	private PreparedStatement stmtOttieniPassword = null;
 	private PreparedStatement stmtLeggiTutto = null;
 	private PreparedStatement stmtIsActive = null;
-	private final static String SQL_READ_PSW = "SELECT password FROM login WHERE username=?";
+	private final static String SQL_READ_PSW = "SELECT hash_password FROM login WHERE username=?";
 	private final static String SQL_READ_ACTIVE = "SELECT active FROM login WHERE username=?";
 	private final static String SQL_READ_ALL = "SELECT * FROM login WHERE username=?";
-	private final static String SQL_INSERT = "INSERT INTO login (username, password) VALUES (?, ?)";
+	private final static String SQL_INSERT = "INSERT INTO login (username, hash_password, salt) VALUES (?, ?, ?)";
 	
 	
 	public LoginTable(String serverAddr, String dbName, String username, String password) throws SQLException {
@@ -40,11 +38,18 @@ public class LoginTable {
 		if (stmtOttieniPassword != null)
 			stmtOttieniPassword.close();
 		
+		if (stmtLeggiTutto != null)
+			stmtLeggiTutto.close();		
+		
+		if (stmtIsActive != null)
+			stmtIsActive.close();
+			
 		if (conn != null)
 			conn.close();
 	}
 	
 	public void login(String username, String password) throws SQLException {
+		
 		stmtLeggiTutto.setString(1, username);
 		ResultSet rs = stmtLeggiTutto.executeQuery();
 
@@ -56,33 +61,34 @@ public class LoginTable {
 
 			if (rs.getString("active").equals("0"))
 				System.out.println("Account bloccato...");
-			else if (rs.getString("password").equals(password))
+			// verifico che alla password inserita corrisponda l'hash ottenuto in registrazione
+			else if (rs.getString("hash_password").equals(Security.getInstance().getHashSHA512(password, rs.getString("salt"))))
 				System.out.println("Login eseguito con successo!");
 			else
 				System.out.println("ERRORE: Username o Password errati...");
-
 		}
 	}
 
 	public void registrazione(String username, String password) throws SQLException {
 
-		if (Utilities.getInstance().isCommonPsw(password)) {
+		if (Utilities.getInstance().isCommonPsw(password) || !Security.getInstance().isStrongPass(password)) {
 
 			System.out.println("Password troppo semplice...");
 			return;
-
 		}
-
 
 		stmtLeggiTutto.setString(1, username);
 		ResultSet rs = stmtLeggiTutto.executeQuery();
 
       	if (!rs.next()) {
-
-			
-			stmtInserisci.setString(1, username); // giacomo"; -- DROP TABLE login;
-			stmtInserisci.setString(2, password);
-			
+      		
+      		// genero salt e hash e lo inserisco nel database
+			String salt = Security.getInstance().generateSalt();
+			String hash = Security.getInstance().getHashSHA512(password, salt);
+			stmtInserisci.setString(1, username);
+			stmtInserisci.setString(2, hash);
+			stmtInserisci.setString(3, salt);
+						
 			// Eseguo la query
 			stmtInserisci.executeUpdate();
 			System.out.println("Nuovo Utente Registrato!");

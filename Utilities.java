@@ -15,16 +15,13 @@ public class Utilities {
 		
 		this.commonPsw = new ArrayList<String>();
 
-		try(Scanner s = new Scanner(new File("resources/MostCommonPsw.txt"))) {
-			
+		try(Scanner s = new Scanner(new File("resources/MostCommonPsw.txt"))) {			
 			while (s.hasNext()){
 				commonPsw.add((String) s.next());
 			}
-
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
 	}
 
 	/* Versione completa per evitare 'race condition' (accessi simultanei) 
@@ -53,10 +50,8 @@ public class Utilities {
 	}
 
 	public boolean isCommonPsw(String password) {
-
 		return commonPsw.contains(password);
-
-	}
+	}	
 
 	public static void handleMainLoop(LoginTable loginTable) throws SQLException, FileNotFoundException {
 
@@ -98,8 +93,7 @@ public class Utilities {
 					}
 
 				} else
-					System.out.println("Input non valido...");
-				
+					System.out.println("Input non valido...");				
 			} 	
 
 		}	
