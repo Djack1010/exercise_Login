@@ -13,7 +13,7 @@ public class LoginTable {
 	private final static String SQL_READ_PSW = "SELECT hash_password FROM login WHERE username=?";
 	private final static String SQL_READ_ACTIVE = "SELECT active FROM login WHERE username=?";
 	private final static String SQL_READ_ALL = "SELECT * FROM login WHERE username=?";
-	private final static String SQL_INSERT = "INSERT INTO login (username, password, hash_password, salt) VALUES (?, ?, ?, ?)";
+	private final static String SQL_INSERT = "INSERT INTO login (username, hash_password, salt) VALUES (?, ?, ?)";
 	
 	
 	public LoginTable(String serverAddr, String dbName, String username, String password) throws SQLException {
@@ -62,7 +62,7 @@ public class LoginTable {
 			if (rs.getString("active").equals("0"))
 				System.out.println("Account bloccato...");
 			// verifico che alla password inserita corrisponda l'hash ottenuto in registrazione
-			else if (rs.getString("hash_password").equals(Utilities.getInstance().getHashSHA512(password, rs.getString("salt"))))
+			else if (rs.getString("hash_password").equals(Security.getInstance().getHashSHA512(password, rs.getString("salt"))))
 				System.out.println("Login eseguito con successo!");
 			else
 				System.out.println("ERRORE: Username o Password errati...");
@@ -71,13 +71,11 @@ public class LoginTable {
 
 	public void registrazione(String username, String password) throws SQLException {
 
-		if (Utilities.getInstance().isCommonPsw(password) || !Utilities.getInstance().isStrongPass(password)) {
+		if (Utilities.getInstance().isCommonPsw(password) || !Security.getInstance().isStrongPass(password)) {
 
 			System.out.println("Password troppo semplice...");
 			return;
-
 		}
-
 
 		stmtLeggiTutto.setString(1, username);
 		ResultSet rs = stmtLeggiTutto.executeQuery();
@@ -85,12 +83,11 @@ public class LoginTable {
       	if (!rs.next()) {
       		
       		// genero salt e hash e lo inserisco nel database
-			String salt = Utilities.getInstance().generateSalt();
-			String hash = Utilities.getInstance().getHashSHA512(password, salt);
+			String salt = Security.getInstance().generateSalt();
+			String hash = Security.getInstance().getHashSHA512(password, salt);
 			stmtInserisci.setString(1, username);
-			stmtInserisci.setString(2, password);
-			stmtInserisci.setString(3, hash);
-			stmtInserisci.setString(4, salt);
+			stmtInserisci.setString(2, hash);
+			stmtInserisci.setString(3, salt);
 						
 			// Eseguo la query
 			stmtInserisci.executeUpdate();
