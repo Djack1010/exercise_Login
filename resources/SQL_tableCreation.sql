@@ -3,5 +3,7 @@ CREATE TABLE IF NOT EXISTS `corso`.`login` (
   `username` VARCHAR(45) NOT NULL,
   `password` VARCHAR(45) NOT NULL,
   `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `hash_password` VARCHAR (100) NOT NULL,
+  `salt` VARCAHR (30) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
