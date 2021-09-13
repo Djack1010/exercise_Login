@@ -1,22 +1,22 @@
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class LoginTable {
-	private Connection conn = null;
-	private PreparedStatement stmtInserisci = null;
-	private PreparedStatement stmtOttieniPassword = null;
-	private PreparedStatement stmtLeggiTutto = null;
-	private PreparedStatement stmtIsActive = null;
-	private final static String SQL_READ_PSW = "SELECT password FROM login WHERE username=?";
-	private final static String SQL_READ_ACTIVE = "SELECT active FROM login WHERE username=?";
-	private final static String SQL_READ_ALL = "SELECT * FROM login WHERE username=?";
-	private final static String SQL_INSERT = "INSERT INTO login (username, password) VALUES (?, ?)";
-	
+	private Connection conn = null;	
+	private PreparedStatement stmt = null;
+	private ResultSet results = null;
+	private String clientPrivateKeyString = "MmL4ZaYP35";
 	
 	public LoginTable(String serverAddr, String dbName, String username, String password) throws SQLException {
 		String url = "jdbc:mysql://" + serverAddr + "/" + dbName;
@@ -25,70 +25,172 @@ public class LoginTable {
 		conn = DriverManager.getConnection(url, username, password);
 		
 		// Definisco tutti gli statements necessari
-		stmtInserisci = conn.prepareStatement(SQL_INSERT);
-		stmtOttieniPassword = conn.prepareStatement(SQL_READ_PSW);
-		stmtLeggiTutto = conn.prepareStatement(SQL_READ_ALL);
-		stmtIsActive = conn.prepareStatement(SQL_READ_ACTIVE);
+		
+		try {
+			checkPassword("");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 	}
 	
 	public void close() throws SQLException {
-		
-		if (stmtInserisci != null)
-			stmtInserisci.close();
-		
-		if (stmtOttieniPassword != null)
-			stmtOttieniPassword.close();
-		
+				
 		if (conn != null)
 			conn.close();
+	
 	}
 	
-	public void login(String username, String password) throws SQLException {
-		stmtLeggiTutto.setString(1, username);
-		ResultSet rs = stmtLeggiTutto.executeQuery();
+	public boolean login(String username, String password) throws SQLException {
+		try {
+			String query = "SELECT * FROM login WHERE username = '" + username + "'";
+			stmt = conn.prepareStatement(query);
+			
+			results = stmt.executeQuery();
+			
+			while(results.next()) {
+				int id = results.getInt("id");
+				String user = results.getString("username");
+				String pw = results.getString("password");
+				String privatekey = results.getString("privatekey");
+				
+				String decryptedPW = AES.decrypt(pw, clientPrivateKeyString + privatekey);
+				
+				if (user.equals(username) && decryptedPW.equals(password)) {
+					return true;
+				} else {
+				return false;
+				}
+			}
+			
+			
+		} catch(SQLException e) {
+			System.out.println("!!!! ERRORE DURANTE IL LOGIN !!!!");
+			e.printStackTrace();
+			
+			return false;
+		} finally {
+			try {
+				if (results != null)
+					results.close();
+				
+				if (stmt != null)
+					stmt.close();
+			} catch(SQLException e2) {
+				System.out.println("!!!! ERRORE NELLA CHIUSURA DELLE RISORSE !!!");
+			}
+		}
+		System.out.println("Username o Password errati!");
+		return false;
+}
 
-		if (!rs.next()) {
-
-			System.out.println("ERRORE: Username o Password errati...");
+	public boolean registrazione(String username, String password) throws SQLException, IOException {
+		if (checkPassword(password) == false) {
+			System.out.println("Password troppo easy bro! Usata troppe volte!");
+			return false;
+		}
 		
-		} else {
+		if (checkPasswordWithScore(password) == false) {
+			System.out.println("Password con score troppo basso!");
+			return false;
+		}
+		
+		//random string for clientside password
+		int leftLimit = 48; // numero 0 ASCII
+	    int rightLimit = 122; // lettera z ASCII
+	    int targetStringLength = 10;
+	    Random random = new Random();
 
-			if (rs.getString("active").equals("0"))
-				System.out.println("Account bloccato...");
-			else if (rs.getString("password").equals(password))
-				System.out.println("Login eseguito con successo!");
-			else
-				System.out.println("ERRORE: Username o Password errati...");
+	    String generatedString = random.ints(leftLimit, rightLimit + 1)
+	      .filter(i -> (i <= 57 || i >= 65) && (i <= 90 || i >= 97))
+	      .limit(targetStringLength)
+	      .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+	      .toString();
 
+		String encryptedPW = AES.encrypt(password, clientPrivateKeyString + generatedString);
+
+		
+		String sql = "INSERT INTO login (username, password, privatekey) VALUES ('" + username + "', '" + encryptedPW + "', '" + generatedString + "')";
+		
+		try {
+			stmt = conn.prepareStatement(sql);
+			
+			int affectedRows = stmt.executeUpdate();
+			if (affectedRows > 0) {
+				System.out.println("Inserimento effettuato con successo!!!");
+				return true;
+			} else {
+				System.out.println("Errore nell'inserimento del record");
+				return false;
+			}
+			
+		} finally {
+			if (stmt != null)
+				stmt.close();
 		}
 	}
 
-	public void registrazione(String username, String password) throws SQLException {
+	private boolean checkPassword(String pw) throws IOException {
+		Path fileName = Path.of("resources/passwords.txt");
+		String actual = Files.readString(fileName);
+		String words[] = actual.split("\r\n"); 
 
-		if (Utilities.getInstance().isCommonPsw(password)) {
-
-			System.out.println("Password troppo semplice...");
-			return;
-
+		for (String word : words) {
+			if (word.equals(pw)) {
+				return false;
+			}
 		}
-
-
-		stmtLeggiTutto.setString(1, username);
-		ResultSet rs = stmtLeggiTutto.executeQuery();
-
-      	if (!rs.next()) {
-
 			
-			stmtInserisci.setString(1, username); // giacomo"; -- DROP TABLE login;
-			stmtInserisci.setString(2, password);
-			
-			// Eseguo la query
-			stmtInserisci.executeUpdate();
-			System.out.println("Nuovo Utente Registrato!");
+		return true;
+	}
+	
+	private boolean checkPasswordWithScore(String pw) {
+		int score = 0;
 		
-		} else
-			System.out.println("Username non disponibile...");
+		if (pw.length() > 10) {
+			score += 2;
+		}
 		
+		    char ch;
+		    boolean capitalFlag = false;
+		    boolean lowerCaseFlag = false;
+		    boolean numberFlag = false;
+		    for(int i=0;i < pw.length();i++) {
+		        ch = pw.charAt(i);
+		        
+		        if (Character.isDigit(ch)) {
+		            numberFlag = true;
+		        } else if (Character.isUpperCase(ch)) {
+		            capitalFlag = true;
+		        } else if (Character.isLowerCase(ch)) {
+		            lowerCaseFlag = true;
+		        }
+		    }
+		    
+		    
+		if (numberFlag) {
+			score +=2;
+		}
+		if (capitalFlag) {
+			score +=2;
+		}
+		if (lowerCaseFlag) {
+			score +=2;
+		}
+		
+		Pattern special = Pattern.compile("[!@#$%&*()_+=|<>?{}\\[\\]~-]");
+		Matcher hasSpecial = special.matcher(pw);
+		
+		if (hasSpecial.find()) {
+			score +=2;
+		}
+		
+		
+		if (score < 6) {
+			return false;
+		} else {
+			return true;
+		}
 	}
 }
