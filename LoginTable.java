@@ -1,3 +1,4 @@
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -15,7 +16,7 @@ public class LoginTable {
 	private final static String SQL_READ_PSW = "SELECT password FROM login WHERE username=?";
 	private final static String SQL_READ_ACTIVE = "SELECT active FROM login WHERE username=?";
 	private final static String SQL_READ_ALL = "SELECT * FROM login WHERE username=?";
-	private final static String SQL_INSERT = "INSERT INTO login (username, password) VALUES (?, ?)";
+	private final static String SQL_INSERT = "INSERT INTO login (username, password, hash, salt) VALUES (?, ?, ?, ?)";
 	
 	
 	public LoginTable(String serverAddr, String dbName, String username, String password) throws SQLException {
@@ -39,6 +40,12 @@ public class LoginTable {
 		
 		if (stmtOttieniPassword != null)
 			stmtOttieniPassword.close();
+		
+		if (stmtLeggiTutto != null)
+			stmtLeggiTutto.close();
+		
+		if (stmtIsActive != null)
+			stmtIsActive.close();
 		
 		if (conn != null)
 			conn.close();
@@ -64,7 +71,7 @@ public class LoginTable {
 		}
 	}
 
-	public void registrazione(String username, String password) throws SQLException {
+	public void registrazione(String username, String password) throws SQLException, NoSuchAlgorithmException {
 
 		if (Utilities.getInstance().isCommonPsw(password)) {
 
@@ -72,16 +79,26 @@ public class LoginTable {
 			return;
 
 		}
+		
+		if (!Utilities.isStrongPassword(password)) {
 
+			System.out.println("La password deve contenere almeno un numero, una minuscola, una maiuscola, un simbolo ed essere lunga più di 10 caratteri...");
+			return;
+
+		}
 
 		stmtLeggiTutto.setString(1, username);
 		ResultSet rs = stmtLeggiTutto.executeQuery();
 
       	if (!rs.next()) {
-
+      		// implemento hashing
+      		String salt = Utilities.createSalt(password);
+      		String hash = Utilities.createHash(password, salt);
 			
 			stmtInserisci.setString(1, username); // giacomo"; -- DROP TABLE login;
 			stmtInserisci.setString(2, password);
+			stmtInserisci.setString(3, hash);
+			stmtInserisci.setString(4, salt);
 			
 			// Eseguo la query
 			stmtInserisci.executeUpdate();

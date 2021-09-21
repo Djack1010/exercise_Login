@@ -1,5 +1,6 @@
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -38,7 +39,7 @@ public class LoginCli {
 	public static String DB_USER = props.getProperty("db.user");
 	public static String DB_PASS = props.getProperty("db.psw");
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws NoSuchAlgorithmException {
 		
 		LoginTable loginTable = null;
 		
