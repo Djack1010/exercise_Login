@@ -1,6 +1,10 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -58,7 +62,7 @@ public class Utilities {
 
 	}
 
-	public static void handleMainLoop(LoginTable loginTable) throws SQLException, FileNotFoundException {
+	public static void handleMainLoop(LoginTable loginTable) throws SQLException, FileNotFoundException, NoSuchAlgorithmException {
 
 		Boolean continua = true;
 		String azione = null;
@@ -116,7 +120,6 @@ public class Utilities {
 
 	}
 
-	
 	public static boolean isStrongPassword (String password) {
 		int score=0;
 		boolean isLong11OK = false;
@@ -127,7 +130,7 @@ public class Utilities {
 		String specialChars = "~!@#$%^&*()_-";
 		char current;
 		
-		for (int i=0; i>password.length(); i++) {
+		for (int i=0; i<password.length(); i++) {
 			current = password.charAt(i);
 			if (score < 6) {
 				if (!isLong11OK && i>=10) {
@@ -156,4 +159,21 @@ public class Utilities {
 		
 		return false;
 	}
+
+	public static String createSalt(String pass) {
+		SecureRandom random = new SecureRandom();
+		byte[] salt = new byte[16];
+		random.nextBytes(salt);
+		
+		return salt.toString();
+	}
+
+	public static String createHash(String salt, String pass) throws NoSuchAlgorithmException {
+		MessageDigest md = MessageDigest.getInstance("SHA-512");
+		md.update(salt.getBytes());
+		byte[] hashedPassword = md.digest(pass.getBytes(StandardCharsets.UTF_8));
+		
+		return hashedPassword.toString();
+	}
+
 }
