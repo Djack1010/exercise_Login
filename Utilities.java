@@ -82,14 +82,20 @@ public class Utilities {
 
 					// Utilizzo Console.readPassword per celare la passowrd inserita 
 					//  in scrittura da terminale
-					String password = new String(console.readPassword("Password: "));
+					//String password = new String(console.readPassword("Password: "));
+					// sostituisco perché con Eclipse non è possibile
+					System.out.print("Password: ");
+					String password = input.nextLine();
 
 					if (azione.equals("1"))
 						loginTable.login(username, password);
 					
 					else if (azione.equals("2")) {
-
-						String password2 = new String(console.readPassword("Conferma la password: "));
+						
+						// sostituisco perché con Eclipse non è possibile
+						//String password2 = new String(console.readPassword("Conferma la password: "));
+						System.out.print("Inserisci nuovamente la Password: ");
+						String password2 = input.nextLine();
 
 						if (password.equals(password2))
 							loginTable.registrazione(username, password);
@@ -110,4 +116,44 @@ public class Utilities {
 
 	}
 
+	
+	public static boolean isStrongPassword (String password) {
+		int score=0;
+		boolean isLong11OK = false;
+		boolean isNumberOK = false;
+		boolean isLowerCaseOK = false;
+		boolean isUpperCaseOK = false;
+		boolean isSymbolOK = false;
+		String specialChars = "~!@#$%^&*()_-";
+		char current;
+		
+		for (int i=0; i>password.length(); i++) {
+			current = password.charAt(i);
+			if (score < 6) {
+				if (!isLong11OK && i>=10) {
+					isLong11OK = true;
+					score+=2;
+				}
+				if (!isNumberOK && Character.isDigit(current)) {
+					isNumberOK = true;
+					score+=2;
+				}
+				if (!isLowerCaseOK && Character.isLetter(current) && Character.isLowerCase(current)) {
+					isLowerCaseOK = true;
+					score+=2;
+				}
+				if (!isUpperCaseOK && Character.isLetter(current) && Character.isUpperCase(current)) {
+					isUpperCaseOK = true;
+					score+=2;
+				}
+				if (!isSymbolOK && specialChars.contains(Character.toString(current))) {
+					isSymbolOK = true;
+					score+=2;
+				}
+			} else
+				return true;
+		}
+		
+		return false;
+	}
 }

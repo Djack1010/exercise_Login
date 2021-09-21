@@ -40,6 +40,12 @@ public class LoginTable {
 		if (stmtOttieniPassword != null)
 			stmtOttieniPassword.close();
 		
+		if (stmtLeggiTutto != null)
+			stmtLeggiTutto.close();
+		
+		if (stmtIsActive != null)
+			stmtIsActive.close();
+		
 		if (conn != null)
 			conn.close();
 	}
@@ -72,7 +78,13 @@ public class LoginTable {
 			return;
 
 		}
+		
+		if (!Utilities.isStrongPassword(password)) {
 
+			System.out.println("La password deve contenere almeno un numero, una minuscola, una maiuscola, un simbolo ed essere lunga più di 10 caratteri...");
+			return;
+
+		}
 
 		stmtLeggiTutto.setString(1, username);
 		ResultSet rs = stmtLeggiTutto.executeQuery();
